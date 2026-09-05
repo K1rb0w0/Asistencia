@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Control de Asistencia</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: -apple-system, sans-serif; text-align: center; margin: 20px; background: #f8f9fa; }
+    #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 12px; overflow: hidden; }
+    #status { margin-top: 20px; font-weight: bold; font-size: 1.1em; }
+    .btn { background: #007aff; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>Escanear Asistencia</h2>
+  <button id="startBtn" class="btn" onclick="iniciarCamara()">Encender Cámara</button>
+  <div id="reader"></div>
+  <div id="status">Presiona el botón para comenzar</div>
+
+  <script>
+    // PEGA AQUÍ LA URL DE TU APLICACIÓN WEB DE GOOGLE APPS SCRIPT
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWJtAFmkMRCN2Af_oA9uxoNZO1hwes4AU8uSUu5IwpgcVKsek0BnJmuwPkAY1Gzc-e/exec";
+
+    let html5QrCode;
+    let procesando = false;
+
+    function iniciarCamara() {
+      document.getElementById('startBtn').style.display = 'none';
+      html5QrCode = new Html5Qrcode("reader");
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        onScanSuccess
+      ).catch(err => {
+        document.getElementById('status').innerText = "Error de cámara: " + err;
+        document.getElementById('startBtn').style.display = 'inline-block';
+      });
+    }
+
+    function onScanSuccess(decodedText) {
+      if (procesando) return;
+      procesando = true;
+
+      const status = document.getElementById('status');
+      status.innerText = "Registrando: " + decodedText + "...";
+
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors", // Requerido para llamadas directas a Apps Script
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identificador: decodedText })
+      })
+      .then(() => {
+        status.innerText = "✅ Registrado: " + decodedText;
+        setTimeout(() => {
+          status.innerText = "Listo para el siguiente...";
+          procesando = false;
+        }, 3000);
+      })
+      .catch(err => {
+        status.innerText = "❌ Error: " + err;
+        procesando = false;
+      });
+    }
+  </script>
+</body>
+</html>
