@@ -3,69 +3,115 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Control de Asistencia</title>
+  <title>Control de Asistencia QR</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: -apple-system, sans-serif; text-align: center; margin: 20px; background: #f8f9fa; }
-    #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 12px; overflow: hidden; }
-    #status { margin-top: 20px; font-weight: bold; font-size: 1.1em; }
-    .btn { background: #007aff; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 8px; cursor: pointer; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+    h2 { margin-bottom: 20px; }
+    #reader {
+      width: 100%;
+      max-width: 380px;
+      margin: 0 auto;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: #000;
+    }
+    #status {
+      margin-top: 24px;
+      font-size: 1.1em;
+      font-weight: 600;
+      min-height: 28px;
+    }
+    .btn-start {
+      background-color: #007aff;
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+    .success { color: #28a745; }
+    .loading { color: #007aff; }
   </style>
 </head>
 <body>
+
   <h2>Escanear Asistencia</h2>
-  <button id="startBtn" class="btn" onclick="iniciarCamara()">Encender Cámara</button>
+  <button id="btnStart" class="btn-start" onclick="iniciarCamara()">Encender Cámara</button>
+  
   <div id="reader"></div>
-  <div id="status">Presiona el botón para comenzar</div>
+  <div id="status">Toca el botón para iniciar la cámara</div>
 
   <script>
-    // PEGA AQUÍ LA URL DE TU APLICACIÓN WEB DE GOOGLE APPS SCRIPT
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWJtAFmkMRCN2Af_oA9uxoNZO1hwes4AU8uSUu5IwpgcVKsek0BnJmuwPkAY1Gzc-e/exec";
 
-    let html5QrCode;
+    let html5QrCode = null;
     let procesando = false;
 
     function iniciarCamara() {
-      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('btnStart').style.display = 'none';
+      document.getElementById('status').innerText = "Abriendo cámara...";
+
       html5QrCode = new Html5Qrcode("reader");
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 220, height: 220 }
+      };
 
       html5QrCode.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
+        config,
         onScanSuccess
-      ).catch(err => {
-        document.getElementById('status').innerText = "Error de cámara: " + err;
-        document.getElementById('startBtn').style.display = 'inline-block';
+      ).then(() => {
+        document.getElementById('status').innerText = "Apunta al código QR del bailarín";
+      }).catch(err => {
+        document.getElementById('status').innerText = "Error al acceder a la cámara: " + err;
+        document.getElementById('btnStart').style.display = 'inline-block';
       });
     }
 
     function onScanSuccess(decodedText) {
-  if (procesando) return;
-  procesando = true;
+      if (procesando) return;
+      procesando = true;
 
-  const status = document.getElementById('status');
-  status.innerText = "Enviando: " + decodedText + "...";
+      const status = document.getElementById('status');
+      status.className = "loading";
+      status.innerText = "Registrando: " + decodedText + "...";
 
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    mode: "no-cors",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"
-    },
-    body: JSON.stringify({ identificador: decodedText })
-  })
-  .then(() => {
-    status.innerText = "✅ Registrado: " + decodedText;
-    setTimeout(() => {
-      status.innerText = "Listo para el siguiente...";
-      procesando = false;
-    }, 3000);
-  })
-  .catch(err => {
-    status.innerText = "❌ Error: " + err;
-    procesando = false;
-  });
-}
+      // Envío compatible con Safari/iOS
+      const scriptTag = document.createElement('script');
+      const urlConParametros = SCRIPT_URL + "?id=" + encodeURIComponent(decodedText) + "&t=" + new Date().getTime();
+      scriptTag.src = urlConParametros;
+
+      const finalizarRegistro = () => {
+        status.className = "success";
+        status.innerText = "✅ Registrado con éxito: " + decodedText;
+        if (scriptTag.parentNode) document.body.removeChild(scriptTag);
+        
+        setTimeout(() => {
+          status.className = "";
+          status.innerText = "Listo para el siguiente...";
+          procesando = false;
+        }, 3000);
+      };
+
+      scriptTag.onload = finalizarRegistro;
+      scriptTag.onerror = finalizarRegistro;
+
+      document.body.appendChild(scriptTag);
+    }
   </script>
 </body>
 </html>
