@@ -40,30 +40,32 @@
     }
 
     function onScanSuccess(decodedText) {
-      if (procesando) return;
-      procesando = true;
+  if (procesando) return;
+  procesando = true;
 
-      const status = document.getElementById('status');
-      status.innerText = "Registrando: " + decodedText + "...";
+  const status = document.getElementById('status');
+  status.innerText = "Enviando: " + decodedText + "...";
 
-      fetch(SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors", // Requerido para llamadas directas a Apps Script
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identificador: decodedText })
-      })
-      .then(() => {
-        status.innerText = "✅ Registrado: " + decodedText;
-        setTimeout(() => {
-          status.innerText = "Listo para el siguiente...";
-          procesando = false;
-        }, 3000);
-      })
-      .catch(err => {
-        status.innerText = "❌ Error: " + err;
-        procesando = false;
-      });
-    }
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8"
+    },
+    body: JSON.stringify({ identificador: decodedText })
+  })
+  .then(() => {
+    status.innerText = "✅ Registrado: " + decodedText;
+    setTimeout(() => {
+      status.innerText = "Listo para el siguiente...";
+      procesando = false;
+    }, 3000);
+  })
+  .catch(err => {
+    status.innerText = "❌ Error: " + err;
+    procesando = false;
+  });
+}
   </script>
 </body>
 </html>
